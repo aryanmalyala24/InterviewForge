@@ -40,3 +40,19 @@ INTERVIEW_ROLES = {
         "difficulty": "medium"
     }
 }
+
+
+def choose_role():
+    print("\nwelcome to the AI Interview Coach")
+    print("Please choose a role from the following options:")
+
+    roles=list(INTERVIEW_ROLES.keys())
+
+    for i, r in enumerate(roles, start=1):
+        print(f"{i}. {r.title()}")
+    
+    choice = int(input("Enter the number corresponding to your choice: "))
+    role = roles[choice - 1]
+
+    print(f"\nYou have chosen the role: {role.title()}")
+    return role, INTERVIEW_ROLES[role]
