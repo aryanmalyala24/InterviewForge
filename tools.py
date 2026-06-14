@@ -1,21 +1,19 @@
 from roles import INTERVIEW_ROLES
-import google.generativeai as genai
+from gemini_client import client
 import json
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = genai.GenerativeModel("models/gemini-2.0-pro")
+MODEL="gemini-2.5-flash"
 
 def strengths_of_user(user_skills, role):
     keywords = INTERVIEW_ROLES[role]["keywords"]
     STRENGTHS = []
     for k in user_skills.lower().split(","):
+        k=k.strip()
         if(k in keywords):
             STRENGTHS.append(k)
-    with open("strengths.json", "w") as f:
-        json.dump({"strengths": STRENGTHS}, f, indent=4)
     return STRENGTHS
 
 def weaknesses_of_user(strengths, role):
@@ -24,12 +22,11 @@ def weaknesses_of_user(strengths, role):
     for k in keywords:
         if(k not in strengths):
             WEAKNESSES.append(k)
-    with open("weaknesses.json", "w") as f:
-        json.dump({"weaknesses": WEAKNESSES}, f, indent=4)
     return WEAKNESSES
 
 
 def ask_questions(role, strengths, weaknesses):
+    ratings=[]
     prompt = f"""
     You are an experienced interviewer.
     Generate exactly 3 interview questions for the role of {role.title()} 
@@ -43,17 +40,20 @@ def ask_questions(role, strengths, weaknesses):
     Don't use . in the middle of the question, only at the end.(IMPORTANT)
     try to cover all the topics in the keywords across the 3 questions."""
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(model=MODEL, contents=prompt)
     questions = response.text.strip().split(".")
     for(i, q) in enumerate(questions, start=1):
-        print(f"\nQuestion {i}: {q.strip()}.")
+        print(f"\nQuestion {i}: {q}.")
         answer = input("Your answer: ")
-        feedback = generate_feedback_for_answer(role, q.strip(), answer)
+        feedback, rating = generate_feedback_for_answer(role, q.strip(), answer)
+        ratings.append(rating)
         print(feedback)
         if(i != len(questions)):
             print("\nMoving to the next question:\n")
         else:
             print("\nThank you for answering all the questions. The interview is now moving to the evaluation stage.\n")
+    return ratings
+
 
 def generate_feedback_for_answer(role, question, answer):
     prompt = f"""
@@ -73,18 +73,16 @@ def generate_feedback_for_answer(role, question, answer):
     Not too harsh, not too lenient, be fair and honest in your evaluation.
     """
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(model=MODEL, contents=prompt)
 
     prompt = f"""
     this is the response from the model: {response.text.strip()}
     now give the rating just in the format of 0-10, don't provide any explanation or anything else, just the rating.
     """
 
-    resp= model.generate_content(prompt)
-    with open("answer_rating.json", "w") as f:
-        json.dump({"rating": resp.text.strip()}, f, indent=4)
-
-    return response.text.strip()
+    resp= client.models.generate_content(model=MODEL, contents=prompt)
+    rating=resp.text.strip()
+    return response.text.strip(), rating
 
 def evaluate_candidate(role, strengths, weaknesses):
     prompt = f"""
@@ -99,5 +97,5 @@ def evaluate_candidate(role, strengths, weaknesses):
     Interviewer Feedback:
     """
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(model=MODEL, contents=prompt)
     return response.text

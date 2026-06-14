@@ -7,5 +7,8 @@ def run_interview():
     user_skills = input("\nEnter your skills (comma separated): ")
     strengths = strengths_of_user(user_skills, role)
     weaknesses = weaknesses_of_user(strengths, role)
-    ask_questions(role, strengths, weaknesses)
+    ratings=ask_questions(role, strengths, weaknesses)
     
+
+if __name__ == "__main__":
+    run_interview()
